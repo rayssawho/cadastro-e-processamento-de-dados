@@ -1,0 +1,120 @@
+-- +----------------------------------------------------------------------+
+-- | SoulCode Academy													  |
+-- | Atividade 13 - Cadastro e processamento de dados                     |
+-- | Rayssa Melo										                  |
+-- | Criação do banco de dados                                            |
+-- +----------------------------------------------------------------------+
+
+-- carregue os 2 arquivos em anexo para um banco de dados
+-- leia do banco em blocos de 50 dados, ordenados por data
+-- para cada bloco registre em uma tabela própria a média, mediana, moda, desvio padrão, maior e menor valores do bloco, data de início e data de fim do bloco
+-- salvar no banco de dados todos os registros e logs de todas as operações realizadas(SGBD/Python), armazenado quem fez, quando fez e o que fez.
+
+
+-- ------------------------------------------------------------------------
+-- Criação das tabelas
+
+CREATE TABLE IF NOT EXISTS vendas (
+	codigo serial,
+	data_venda timestamp not null,
+	valor numeric not null
+
+);
+
+CREATE TABLE IF NOT EXISTS logs_vendas (
+	id_log serial,
+	usuario text,
+	data_alteracao text,
+	operacao text
+);
+
+CREATE TABLE IF NOT EXISTS registros_vendas (
+	grupo_tabela serial,
+	data_inicio date,
+	data_final date,
+	media float,
+	mediana float,
+	moda float,
+	desvio_padrao float,
+	maior_valor float,
+	menor_valor float
+);
+
+
+-- ------------------------------------------------------------------------
+-- Criando procedure e triggers para alterações na tabela vendas.
+-- Qualquer alteração na tabela vendas, será inserido dados na tabela logs_vendas
+
+CREATE OR REPLACE FUNCTION Trg_function_vendas() RETURNS TRIGGER AS $$
+	BEGIN
+	
+		IF(TG_OP = 'INSERT') THEN
+			INSERT INTO logs_vendas(usuario, data_alteracao, operacao)
+			VALUES (current_user, current_timestamp, (' Operação de Inserção. A linha de Código ' || NEW.codigo || ' Foi inserida'));
+			RETURN NEW;
+	
+		ELSIF (TG_OP = 'UPDATE') THEN
+			INSERT INTO logs_vendas(usuario, data_alteracao, operacao)
+			VALUES (current_user, current_timestamp, (' Operação de Atualização. A linha de Código ' || NEW.codigo || ' teve seus valores modificados '
+					|| OLD.* || ' com ' || NEW.* || ' .'));
+			RETURN NEW;
+	
+		ELSIF (TG_OP = 'DELETE') THEN
+			INSERT INTO logs_vendas(usuario, data_alteracao, operacao)
+			VALUES (current_user, current_timestamp, (' Operação de Exclusão. Os seguintes dados foram excluídos: ' || OLD.* || ' .'));
+			RETURN OLD;
+		END IF;	
+		RETURN OLD;
+	
+	END;
+$$
+LANGUAGE 'plpgsql';
+
+CREATE TRIGGER aplicarProcedures_vendas
+	AFTER INSERT OR UPDATE OR DELETE ON vendas
+		FOR EACH ROW
+			EXECUTE PROCEDURE Trg_function_vendas();
+			
+
+-- ------------------------------------------------------------------------
+
+
+-- ------------------------------------------------------------------------
+-- Criando procedure e triggers para alterações na tabela registros_vendas.
+-- Qualquer alteração na tabela registros_vendas, será inserido dados na tabela logs_vendas
+
+CREATE OR REPLACE FUNCTION Trg_function_registros_vendas() RETURNS TRIGGER AS $$
+	BEGIN
+	
+		IF(TG_OP = 'INSERT') THEN
+			INSERT INTO logs_vendas(usuario, data_alteracao, operacao)
+			VALUES (current_user, current_timestamp, (' Operação de Inserção. O grupo ' || NEW.grupo_tabela || ' Foi inserido'));
+			RETURN NEW;
+	
+		ELSIF (TG_OP = 'UPDATE') THEN
+			INSERT INTO logs_vendas(usuario, data_alteracao, operacao)
+			VALUES (current_user, current_timestamp, (' Operação de Atualização. O grupo ' || NEW.grupo_tabela || ' teve seus valores modificados '
+					|| OLD.* || ' com ' || NEW.* || ' .'));
+			RETURN NEW;
+	
+		ELSIF (TG_OP = 'DELETE') THEN
+			INSERT INTO logs_vendas(usuario, data_alteracao, operacao)
+			VALUES (current_user, current_timestamp, (' Operação de Exclusão. Os seguintes dados foram excluídos: ' || OLD.* || ' .'));
+			RETURN OLD;
+		END IF;	
+		RETURN OLD;
+	
+	END;
+$$
+LANGUAGE 'plpgsql';
+
+CREATE TRIGGER aplicarProcedures_registros_vendas
+	AFTER INSERT OR UPDATE OR DELETE ON registros_vendas
+		FOR EACH ROW
+			EXECUTE PROCEDURE Trg_function_registros_vendas();
+			
+			
+
+SELECT * FROM logs_vendas;
+
+
